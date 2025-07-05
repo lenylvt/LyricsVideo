@@ -51,7 +51,9 @@ class EffectsEngine:
     
     def get_zoom_scale(self, bpm: float, time: float) -> float:
         """Calculate zoom scale with beat synchronization"""
-        beats_per_second = bpm / 60.0
+        beats_per_second = bpm / 60.0 if bpm else 0
+        if beats_per_second == 0:
+            return 1.0  # Pas d'effet de zoom si BPM inconnu
         beat_duration = 1.0 / beats_per_second
         time_within_beat = time % beat_duration
         

@@ -100,6 +100,10 @@ if bpm:
 else:
     print(f"🥁 BPM calculé à partir de l'audio : {bpm}")
 
+if not bpm or bpm <= 0:
+    print("⚠️ BPM non trouvé ou invalide, valeur par défaut utilisée (120).")
+    bpm = 120.0
+
 print("🖼️ Création des images...")
 images_maker = ImageMaker(lyrics_fetcher.get_lyrics())
 if static_cover_path:
