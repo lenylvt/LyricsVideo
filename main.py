@@ -84,8 +84,7 @@ if not lyrics_found:
 # Le reste du code ne s'exécute que si des paroles ont été trouvées
 print("🎵 Récupération de l'audio...")
 # Récupération de la clé API YouTube depuis les variables d'environnement
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
-audio_fetcher = AudioFetcher(youtube_api_key=YOUTUBE_API_KEY)
+audio_fetcher = AudioFetcher()
 audio_fetcher.fetch_audio(artist_name, song_title)
 print("✅ Audio récupéré!")
 

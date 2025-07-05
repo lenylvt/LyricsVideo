@@ -32,10 +32,10 @@ jobs:
 
     - name: Exécution du script principal
       env:
-        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
         TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
         TIKTOK_REDIRECT_URI: ${{ secrets.TIKTOK_REDIRECT_URI }}
         TIKTOK_TOKEN_JSON: ${{ secrets.TIKTOK_TOKEN_JSON }}
+        PLAYLIST_ID: ${{ secrets.PLAYLIST_ID }}
       run: |
         python main.py 
