@@ -83,7 +83,9 @@ if not lyrics_found:
 
 # Le reste du code ne s'exécute que si des paroles ont été trouvées
 print("🎵 Récupération de l'audio...")
-audio_fetcher = AudioFetcher(youtube_api_key="AIzaSyBQkIuiHT0rR78eRdhqbBTt4vMQfssBNOM")
+# Récupération de la clé API YouTube depuis les variables d'environnement
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
+audio_fetcher = AudioFetcher(youtube_api_key=YOUTUBE_API_KEY)
 audio_fetcher.fetch_audio(artist_name, song_title)
 print("✅ Audio récupéré!")
 
@@ -129,9 +131,9 @@ final_video = video_maker.create_complete_video()
 print(f"🎉 Vidéo terminée pour : {artist_name} - {song_title}")
 print(f"📹 Fichier vidéo : {final_video}")
 
-client_key = "sbawtqg84z43tqt1cv"
-client_secret = "HkavHcbJQBcJgobVIU998XODCOJyq5z3"
-redirect_uri = "https://singer.lenylvt.cc/"
+client_key = os.environ.get("TIKTOK_CLIENT_KEY", "sbawtqg84z43tqt1cv")
+client_secret = os.environ.get("TIKTOK_CLIENT_SECRET", "HkavHcbJQBcJgobVIU998XODCOJyq5z3")
+redirect_uri = os.environ.get("TIKTOK_REDIRECT_URI", "https://singer.lenylvt.cc/")
 token_path = "../tiktok_tokens.txt" if not os.path.exists("tiktok_tokens.txt") else "tiktok_tokens.txt"
 
 def save_tokens(token_data, path=token_path):
@@ -150,6 +152,20 @@ def is_token_expired(token_data):
     expires_in = int(token_data.get("expires_in", 0))
     saved_at = int(token_data.get("saved_at", 0))
     return now > saved_at + expires_in - 60  # marge de 1 min
+
+def create_token_file_from_env():
+    token_json = os.environ.get("TIKTOK_TOKEN_JSON")
+    if token_json:
+        try:
+            data = json.loads(token_json)
+            with open("tiktok_tokens.txt", "w") as f:
+                json.dump(data, f)
+            print("✅ Fichier tiktok_tokens.txt créé depuis la variable d'environnement.")
+        except Exception as e:
+            print(f"❌ Erreur lors de la création de tiktok_tokens.txt : {e}")
+
+# Appel du script utilitaire au démarrage
+create_token_file_from_env()
 
 # === Authentification TikTok (OAuth2) ===
 token_data = load_tokens()
