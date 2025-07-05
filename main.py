@@ -83,12 +83,22 @@ if not lyrics_found:
 
 # Le reste du code ne s'exécute que si des paroles ont été trouvées
 print("🎵 Récupération de l'audio...")
-audio_fetcher = AudioFetcher()
+audio_fetcher = AudioFetcher(youtube_api_key="AIzaSyBQkIuiHT0rR78eRdhqbBTt4vMQfssBNOM")
 audio_fetcher.fetch_audio(artist_name, song_title)
 print("✅ Audio récupéré!")
 
-bpm = audio_fetcher.get_bpm()
-print(f"🥁 BPM de la chanson : {bpm}")
+# Utilisation du BPM Deezer si disponible, sinon calcul à partir de l'audio
+def safe_float(val):
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+bpm = safe_float(track_info.get("bpm"))
+if bpm:
+    print(f"🥁 BPM récupéré depuis Deezer : {bpm}")
+else:
+    print(f"🥁 BPM calculé à partir de l'audio : {bpm}")
 
 print("🖼️ Création des images...")
 images_maker = ImageMaker(lyrics_fetcher.get_lyrics())

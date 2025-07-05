@@ -9,3 +9,5 @@ librosa
 scipy
 matplotlib
 python-dotenv
+pytubefix
+librosa

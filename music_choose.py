@@ -14,10 +14,24 @@ def choose_random_track(playlist_id='13831509421'):
     track = random.choice(tracks)
     print("🎲 Musique choisie :", track['title'], "par", track['artist']['name'])
 
+    # Récupérer le BPM via l'API track
+    bpm = None
+    try:
+        track_id = track.get('id')
+        if track_id:
+            track_url = f'https://api.deezer.com/track/{track_id}'
+            track_resp = requests.get(track_url)
+            track_data = track_resp.json()
+            bpm = track_data.get('bpm')
+    except Exception as e:
+        print(f"⚠️ Impossible de récupérer le BPM Deezer : {e}")
+        bpm = None
+
     # Récupère les infos utiles
     return {
         'title': track['title'],
         'artist': track['artist']['name'],
         'isrc': track.get('isrc'),
-        'deezer_link': track['link']
+        'deezer_link': track['link'],
+        'bpm': bpm
     }
