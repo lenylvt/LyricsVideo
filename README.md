@@ -7,7 +7,7 @@
  ╚═════╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═════╝  ╚═════╝     ╚══════╝╚══════╝╚══════╝    ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝   
 ```
 
-# 🎤 Lyrics Video Maker – Version « Chabat & Cie »
+# 🎤 Lyrics Video Maker 
 
 Bienvenue dans le royaume un peu fou de **Lyrics Video Maker** : un script Python qui prend une chanson de Deezer au hasard, en extrait les paroles, crée des images stylées, monte une vidéo verticale et la dépose comme un galet sur TikTok. Auto‑piloté, sans stress !
 
