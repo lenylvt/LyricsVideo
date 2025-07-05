@@ -1,7 +1,7 @@
 import json
 import re
 import requests
-from MusicMatch import MusixMatchAPI
+from src.audio.MusicMatch import MusixMatchAPI
 
 class LyricsFetcher:
     def __init__(self, artist: str, title: str):

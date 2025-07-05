@@ -2,10 +2,10 @@ import os
 import json
 import time
 import numpy as np
-from video import LyricsFetcher, AudioFetcher, ImageMaker, VideoMakerV2
-from music_choose import choose_random_track
-from cover_get import download_cover
-from post import TikTokPoster, get_tiktok_auth_url
+from src.video.video import LyricsFetcher, AudioFetcher, ImageMaker, VideoMakerV2
+from src.audio.music_choose import choose_random_track
+from src.images.cover_get import download_cover
+from src.post import TikTokPoster, get_tiktok_auth_url
 
 # Sélection aléatoire d'une musique
 print("🎲 Sélection aléatoire d'une musique...")

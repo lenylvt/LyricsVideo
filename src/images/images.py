@@ -1,10 +1,15 @@
+
+import os
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 import threading
-import os
 import random
 import math
 
-from lyrics import LyricsFetcher
+from src.lyrics.lyrics import LyricsFetcher
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+FONT_PATH = os.path.join(PROJECT_ROOT, "assets", "font.ttf")
+BACKGROUND_PATH = os.path.join(PROJECT_ROOT, "assets", "background.jpg")
 
 class ImageMaker:
     def __init__(self, lyrics: list[dict]):
@@ -128,7 +133,9 @@ class ImageMaker:
         else:
             line_text = line["line"].upper()
 
-        background = Image.open("../background.jpg")
+        if not os.path.exists(BACKGROUND_PATH):
+            raise FileNotFoundError(f"Le fichier de fond '{BACKGROUND_PATH}' est introuvable. Place-le dans le dossier assets/.")
+        background = Image.open(BACKGROUND_PATH)
         
         # Resize background to 9:16 aspect ratio
         background = self.resize_background_to_916(background)
@@ -140,7 +147,7 @@ class ImageMaker:
 
         # Taille de police intelligente
         font_size = self.get_smart_font_size(line_text, width, height)
-        font = ImageFont.truetype("../font.ttf", font_size)
+        font = ImageFont.truetype(FONT_PATH, font_size)
 
         # Marges adaptatives
         margin = int(0.1 * width)
@@ -202,15 +209,17 @@ class ImageMaker:
 
     def create_title_card(self, artist, title, duration=3.0):
         """Crée une carte de titre moderne pour le début de la vidéo"""
-        background = Image.open("../background.jpg")
+        if not os.path.exists(BACKGROUND_PATH):
+            raise FileNotFoundError(f"Le fichier de fond '{BACKGROUND_PATH}' est introuvable. Place-le dans le dossier assets/.")
+        background = Image.open(BACKGROUND_PATH)
         background = self.resize_background_to_916(background)
         background = self.add_modern_effects(background)
         
         width, height = background.size
         
         # Fonts pour le titre et l'artiste
-        title_font = ImageFont.truetype("../font.ttf", int(0.12 * width))
-        artist_font = ImageFont.truetype("../font.ttf", int(0.08 * width))
+        title_font = ImageFont.truetype(FONT_PATH, int(0.12 * width))
+        artist_font = ImageFont.truetype(FONT_PATH, int(0.08 * width))
         
         # Créer l'overlay
         background = background.convert('RGBA')

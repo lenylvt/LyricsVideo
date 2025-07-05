@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 
-from images import LyricsFetcher, ImageMaker
-from audio import AudioFetcher
+from src.audio.audio import AudioFetcher
+from src.images.images import LyricsFetcher, ImageMaker
 
 @dataclass
 class VideoConfig:
@@ -105,7 +105,8 @@ class VideoMakerV2:
         self.video_name = "output_v2_temp.mp4"
         self.audio_file = "audio.m4a"
         self.final_video_name = "output_v2_final.mp4"
-        self.background_image = "../background.jpg"
+        PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.background_image = os.path.join(PROJECT_ROOT, "assets", "background.jpg")
         
         # Video metadata
         self.metadata = {

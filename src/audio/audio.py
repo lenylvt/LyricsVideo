@@ -10,12 +10,14 @@ load_dotenv()
 
 # Si on trouve COOKIES_TXT, on recrée cookies.txt à la volée
 cookie_blob = os.getenv("COOKIES_TXT")
+cookies_path = os.path.join("assets", "cookies.txt")
 if cookie_blob:
-    with open("cookies.txt", "w") as f:
+    os.makedirs(os.path.dirname(cookies_path), exist_ok=True)
+    with open(cookies_path, "w") as f:
         f.write(cookie_blob)
 
 class AudioFetcher:
-    def __init__(self, browser=None, cookies_file="cookies.txt"):
+    def __init__(self, browser=None, cookies_file=cookies_path):
         """
         Initialise AudioFetcher avec yt-dlp et gestion des cookies.
         
@@ -52,6 +54,7 @@ class AudioFetcher:
                 # Tente de recréer à partir de la variable d'environnement
                 cookie_blob = os.getenv("COOKIES_TXT")
                 if cookie_blob:
+                    os.makedirs(os.path.dirname(self.cookies_file), exist_ok=True)
                     with open(self.cookies_file, "w") as f:
                         f.write(cookie_blob)
                 else:
