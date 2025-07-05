@@ -1,0 +1,11 @@
+requests
+moviepy
+opencv-python
+numpy
+Pillow
+selenium
+pytubefix
+librosa
+scipy
+matplotlib
+python-dotenv
