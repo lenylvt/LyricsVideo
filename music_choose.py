@@ -3,7 +3,7 @@ import random
 import os
 import time
 
-def choose_random_track(playlist_id=None):
+def choose_random_track(playlist_id="6955605564"):
     """
     Choose a random track from a Deezer playlist with improved error handling
     """
