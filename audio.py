@@ -156,6 +156,20 @@ class AudioFetcher:
         """Ferme le scraper"""
         self.scraper.close()
 
+    def get_bpm_from_audio(self, audio_path="audio.m4a"):
+        """
+        Calcule le BPM à partir du fichier audio (par défaut audio.m4a) avec librosa.
+        Retourne le BPM (float) ou None en cas d'erreur.
+        """
+        try:
+            import librosa
+            y, sr = librosa.load(audio_path, sr=None, mono=True, duration=60)  # max 60s pour rapidité
+            tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+            return float(tempo)
+        except Exception as e:
+            print(f"❌ Erreur lors du calcul du BPM avec librosa : {e}")
+            return None
+
 # Exemple d'utilisation
 if __name__ == "__main__":
     # Option 1: Sans clé API (moins fiable)

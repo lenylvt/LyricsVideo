@@ -1,7 +1,8 @@
 import requests
 import random
+import os
 
-def choose_random_track(playlist_id='13831509421'):
+def choose_random_track(playlist_id=os.getenv("PLAYLIST_ID")):
     url = f'https://api.deezer.com/playlist/{playlist_id}'
     response = requests.get(url)
     data = response.json()

@@ -4,7 +4,7 @@ import time
 from video import LyricsFetcher, AudioFetcher, ImageMaker, VideoMakerV2
 from music_choose import choose_random_track
 from cover_get import download_cover
-from post import TikTokPoster
+from post import TikTokPoster, get_tiktok_auth_url
 
 # Sélection aléatoire d'une musique
 print("🎲 Sélection aléatoire d'une musique...")
@@ -90,21 +90,28 @@ audio_fetcher.fetch_audio(artist_name, song_title)
 print("✅ Audio récupéré!")
 
 # Utilisation du BPM Deezer si disponible, sinon calcul à partir de l'audio
-def safe_float(val):
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return None
+def get_valid_bpm(track_info, audio_fetcher, default_bpm=120.0):
+    """
+    Tente d'obtenir le BPM Deezer, sinon le BPM audio, sinon retourne le BPM par défaut.
+    """
+    def safe_float(val):
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return None
+    bpm = safe_float(track_info.get("bpm"))
+    if bpm and bpm > 0:
+        print(f"🥁 BPM récupéré depuis Deezer : {bpm}")
+        return bpm
+    print("🔎 Calcul du BPM à partir de l'audio...")
+    bpm = audio_fetcher.get_bpm_from_audio()
+    if bpm and bpm > 0:
+        print(f"🥁 BPM calculé à partir de l'audio : {bpm}")
+        return bpm
+    print(f"⚠️ BPM non trouvé ou invalide, valeur par défaut utilisée ({default_bpm}).")
+    return default_bpm
 
-bpm = safe_float(track_info.get("bpm"))
-if bpm:
-    print(f"🥁 BPM récupéré depuis Deezer : {bpm}")
-else:
-    print(f"🥁 BPM calculé à partir de l'audio : {bpm}")
-
-if not bpm or bpm <= 0:
-    print("⚠️ BPM non trouvé ou invalide, valeur par défaut utilisée (120).")
-    bpm = 120.0
+bpm = get_valid_bpm(track_info, audio_fetcher)
 
 print("🖼️ Création des images...")
 images_maker = ImageMaker(lyrics_fetcher.get_lyrics())
@@ -126,7 +133,22 @@ video_maker = VideoMakerV2(
 )
 
 # Créer la vidéo complète
-final_video = video_maker.create_complete_video()
+try:
+    final_video = video_maker.create_complete_video()
+except Exception as e:
+    print(f"❌ Erreur lors de la création de la vidéo avec BPM {bpm} : {e}")
+    if bpm != 120.0:
+        print("🔁 Nouvelle tentative avec le BPM par défaut (120)...")
+        video_maker = VideoMakerV2(
+            folder=images_maker.folder,
+            bpm=120.0,
+            artist_name=artist_name,
+            song_title=song_title,
+            cover_path=static_cover_path
+        )
+        final_video = video_maker.create_complete_video()
+    else:
+        raise
 
 print(f"🎉 Vidéo terminée pour : {artist_name} - {song_title}")
 print(f"📹 Fichier vidéo : {final_video}")
@@ -141,7 +163,10 @@ def save_tokens(token_data, path=token_path):
     with open(path, "w") as f:
         json.dump(token_data, f)
 
-def load_tokens(path=token_path):
+def load_tokens(path=None):
+    if path is None:
+        project_root = get_project_root()
+        path = os.path.join(project_root, "tiktok_tokens.txt")
     if not os.path.exists(path):
         return None
     with open(path) as f:
@@ -153,16 +178,37 @@ def is_token_expired(token_data):
     saved_at = int(token_data.get("saved_at", 0))
     return now > saved_at + expires_in - 60  # marge de 1 min
 
+def get_project_root():
+    """Retourne le chemin absolu de la racine du projet (là où se trouve main.py)."""
+    return os.path.dirname(os.path.abspath(__file__))
+
 def create_token_file_from_env():
     token_json = os.environ.get("TIKTOK_TOKEN_JSON")
+    token_str = os.environ.get("TIKTOK_TOKEN")
+    project_root = get_project_root()
+    token_file_path = os.path.join(project_root, "tiktok_tokens.txt")
     if token_json:
         try:
             data = json.loads(token_json)
-            with open("tiktok_tokens.txt", "w") as f:
+            with open(token_file_path, "w") as f:
                 json.dump(data, f)
-            print("✅ Fichier tiktok_tokens.txt créé depuis la variable d'environnement.")
+            print(f"✅ Fichier tiktok_tokens.txt créé depuis la variable d'environnement TIKTOK_TOKEN_JSON à : {token_file_path}")
+            return
         except Exception as e:
-            print(f"❌ Erreur lors de la création de tiktok_tokens.txt : {e}")
+            print(f"❌ Erreur lors de la création de tiktok_tokens.txt depuis TIKTOK_TOKEN_JSON : {e}")
+    if token_str:
+        try:
+            # Si c'est un JSON, on le charge, sinon on considère que c'est juste l'access_token
+            try:
+                data = json.loads(token_str)
+            except json.JSONDecodeError:
+                # Juste un access_token brut
+                data = {"access_token": token_str}
+            with open(token_file_path, "w") as f:
+                json.dump(data, f)
+            print(f"✅ Fichier tiktok_tokens.txt créé depuis la variable d'environnement TIKTOK_TOKEN à : {token_file_path}")
+        except Exception as e:
+            print(f"❌ Erreur lors de la création de tiktok_tokens.txt depuis TIKTOK_TOKEN : {e}")
 
 # Appel du script utilitaire au démarrage
 create_token_file_from_env()
@@ -171,6 +217,8 @@ create_token_file_from_env()
 token_data = load_tokens()
 if not token_data:
     print("🔑 Aucun token TikTok trouvé. Veuillez coller le code d'autorisation TikTok (après connexion via Login Kit) :")
+    print("👉 Lien d'autorisation TikTok :")
+    print(get_tiktok_auth_url())
     code = input("Code : ").strip()
     try:
         print("⏳ Échange du code contre un access_token...")

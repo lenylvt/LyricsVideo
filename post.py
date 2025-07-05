@@ -2,6 +2,7 @@ import requests
 import os
 from typing import Optional, Dict, Any
 import math
+import urllib.parse
 
 # Chunk size limits based on TikTok API requirements
 MIN_CHUNK_SIZE = 5 * 1024 * 1024       # 5 MB minimum for non-final chunks
@@ -16,6 +17,34 @@ def _compute_chunk_params(file_size: int) -> tuple:
         return file_size, 1
     else:
         return MAX_CHUNK_SIZE, math.ceil(file_size / MAX_CHUNK_SIZE)
+
+def get_tiktok_auth_url() -> str:
+    """
+    Génère le lien d'autorisation TikTok (OAuth2) automatiquement rempli à partir des variables d'environnement.
+    """
+    client_key = os.getenv("TIKTOK_CLIENT_KEY")
+    redirect_uri = os.getenv("TIKTOK_REDIRECT_URI")
+    scopes = [
+        "user.info.basic",
+        "video.upload",
+        "video.publish"
+    ]
+    if not client_key or not redirect_uri:
+        return "Veuillez renseigner TIKTOK_CLIENT_KEY et TIKTOK_REDIRECT_URI dans votre .env"
+    base_url = "https://www.tiktok.com/v2/auth/authorize/"
+    params = {
+        "client_key": client_key,
+        "response_type": "code",
+        "scope": ",".join(scopes),
+        "redirect_uri": redirect_uri,
+        "state": "state"
+    }
+    return f"{base_url}?{urllib.parse.urlencode(params)}"
+
+# Exemple d'utilisation
+if __name__ == "__main__":
+    print("Lien d'autorisation TikTok :")
+    print(get_tiktok_auth_url())
 
 TIKTOK_API_BASE = "https://open.tiktokapis.com/v2/post/publish"
 TIKTOK_VIDEO_INBOX_INIT = f"{TIKTOK_API_BASE}/inbox/video/init/"
