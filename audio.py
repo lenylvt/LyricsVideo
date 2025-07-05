@@ -3,6 +3,7 @@ import os
 import librosa
 import os
 from dotenv import load_dotenv
+import numpy as np
 
 # Charge automatiquement les variables de .env
 load_dotenv()  
@@ -19,7 +20,7 @@ class AudioFetcher:
         Initialise AudioFetcher avec yt-dlp et gestion des cookies.
         
         :param browser: (str) nom du navigateur pour --cookies-from-browser (e.g., "chrome", "firefox").
-        :param cookies_file: (str) chemin vers un fichier cookies Netscape pour --cookies.
+        :param cookies_file: (str) chemin vers un fichier cookies Netscape pour --cookies (défaut "cookies.txt").
         """
         self.browser = browser
         self.cookies_file = cookies_file
@@ -40,13 +41,24 @@ class AudioFetcher:
         """
         Retourne une liste d'arguments pour yt-dlp en fonction des cookies configurés.
         Préfère --cookies-from-browser si browser est défini, sinon --cookies si cookies_file est défini.
+        Si le fichier cookies n'existe pas mais que COOKIES_TXT est défini, il le recrée automatiquement.
         """
         args = []
         if self.browser:
             args += ['--cookies-from-browser', self.browser]
         elif self.cookies_file:
+            # Vérifie l'existence du fichier cookies
             if not os.path.exists(self.cookies_file):
-                raise FileNotFoundError(f"Fichier de cookies introuvable: {self.cookies_file}")
+                # Tente de recréer à partir de la variable d'environnement
+                cookie_blob = os.getenv("COOKIES_TXT")
+                if cookie_blob:
+                    with open(self.cookies_file, "w") as f:
+                        f.write(cookie_blob)
+                else:
+                    raise FileNotFoundError(
+                        f"Fichier de cookies introuvable: {self.cookies_file}. "
+                        "Assure-toi de définir COOKIES_TXT dans ton .env."
+                    )
             args += ['--cookies', self.cookies_file]
         return args
     
@@ -104,20 +116,20 @@ class AudioFetcher:
             return False
     
     def get_bpm_from_audio(self, audio_path="audio.m4a"):
-        """
-        Calcule le BPM à partir d'un fichier audio avec librosa.
-        Retourne le BPM (float) ou None en cas d'erreur.
-        """
+        """Calcule le BPM à partir d'un fichier audio avec librosa. Retourne le BPM (float) ou None en cas d'erreur."""
         if not os.path.exists(audio_path):
             print(f"❌ Fichier audio non trouvé: {audio_path}")
             return None
-        
         try:
             print("🎵 Calcul du BPM en cours...")
             y, sr = librosa.load(audio_path, sr=None, mono=True, duration=60)
             tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+            if isinstance(tempo, (list, np.ndarray)):
+                tempo = float(tempo.flatten()[0])
+            else:
+                tempo = float(tempo)
             print(f"✅ BPM calculé: {tempo:.1f}")
-            return float(tempo)
+            return tempo
         except Exception as e:
             print(f"❌ Erreur lors du calcul du BPM: {e}")
             return None

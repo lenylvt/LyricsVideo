@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import numpy as np
 from video import LyricsFetcher, AudioFetcher, ImageMaker, VideoMakerV2
 from music_choose import choose_random_track
 from cover_get import download_cover
@@ -88,8 +89,44 @@ audio_fetcher = AudioFetcher()
 audio_fetcher.fetch_audio(artist_name, song_title)
 print("✅ Audio récupéré!")
 
-# Utilisation du BPM Deezer si disponible, sinon calcul à partir de l'audio
 def get_valid_bpm(track_info, audio_fetcher, default_bpm=120.0):
+    """
+    Tente d'obtenir le BPM Deezer, sinon le BPM audio, sinon retourne le BPM par défaut.
+    """
+    def safe_float(val):
+        try:
+            if isinstance(val, np.ndarray):
+                val = val.flatten()[0]  # Prendre la première valeur si c'est un tableau
+            return float(val)
+        except (TypeError, ValueError):
+            return None
+
+    # Priorité au BPM Deezer
+    bpm = safe_float(track_info.get("bpm"))
+    if bpm is not None and bpm > 0:
+        print(f"🥁 BPM récupéré depuis Deezer : {bpm}")
+        return bpm
+
+    # Calcul via audio
+    print("🔎 Calcul du BPM à partir de l'audio...")
+    try:
+        bpm_audio = audio_fetcher.get_bpm_from_audio()
+        if isinstance(bpm_audio, np.ndarray):
+            if bpm_audio.size == 1:
+                bpm_audio = float(bpm_audio.item())
+            elif bpm_audio.size > 1:
+                bpm_audio = float(bpm_audio.flatten()[0])
+        bpm_value = safe_float(bpm_audio)
+        if bpm_value is not None and bpm_value > 0:
+            print(f"🥁 BPM calculé depuis l'audio : {bpm_value}")
+            return bpm_value
+    except Exception as e:
+        print(f"❌ Erreur lors du calcul du BPM audio : {e}")
+
+    # Valeur par défaut
+    print(f"⚠️ BPM non trouvé ou invalide, valeur par défaut utilisée ({default_bpm}).")
+    return default_bpm
+
     """
     Tente d'obtenir le BPM Deezer, sinon le BPM audio, sinon retourne le BPM par défaut.
     """
@@ -98,15 +135,29 @@ def get_valid_bpm(track_info, audio_fetcher, default_bpm=120.0):
             return float(val)
         except (TypeError, ValueError):
             return None
+
+    # Priorité au BPM Deezer
     bpm = safe_float(track_info.get("bpm"))
     if bpm and bpm > 0:
         print(f"🥁 BPM récupéré depuis Deezer : {bpm}")
         return bpm
+
+    # Calcul via audio
     print("🔎 Calcul du BPM à partir de l'audio...")
-    bpm = audio_fetcher.get_bpm_from_audio()
-    if bpm and bpm > 0:
-        print(f"🥁 BPM calculé à partir de l'audio : {bpm}")
-        return bpm
+    try:
+        bpm_audio = audio_fetcher.get_bpm_from_audio()
+        if bpm_audio is not None:
+            if isinstance(bpm_audio, np.ndarray):
+                bpm_value = float(bpm_audio.flatten()[0])
+            else:
+                bpm_value = float(bpm_audio)
+        else:
+            bpm_value = None
+    except Exception as e:
+        print(f"❌ Erreur lors du calcul du BPM audio : {e}")
+        bpm_value = None
+
+    # Valeur par défaut
     print(f"⚠️ BPM non trouvé ou invalide, valeur par défaut utilisée ({default_bpm}).")
     return default_bpm
 
