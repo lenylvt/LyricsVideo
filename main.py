@@ -95,6 +95,8 @@ images_maker = ImageMaker(lyrics_fetcher.get_lyrics())
 if static_cover_path:
     images_maker.animated_cover_path = static_cover_path  # On utilise la cover statique comme image principale
 images_maker.make_images()
+# Ajout : création de la carte de titre moderne
+images_maker.create_title_card(artist_name, song_title)
 print("✅ Images créées!")
 
 print("🎬 Création de la vidéo...")

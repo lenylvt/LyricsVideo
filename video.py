@@ -171,13 +171,22 @@ class VideoMakerV2:
         return True
     
     def load_and_prepare_images(self) -> List[Dict]:
-        """Load and sort images with metadata"""
+        """Charge et trie les images, en mettant title_card.jpg en premier s'il existe"""
         images = [img for img in os.listdir(self.folder) if img.endswith(('.jpg', '.jpeg', '.png'))]
-        
         image_data = []
+        # Gestion spéciale pour title_card.jpg
+        title_card_path = os.path.join(self.folder, 'title_card.jpg')
+        if 'title_card.jpg' in images:
+            image_data.append({
+                'filename': 'title_card.jpg',
+                'timestamp': 0,
+                'path': title_card_path
+            })
+            images.remove('title_card.jpg')
+        # Les autres images (lyrics_xx.xx.jpg)
         for img in images:
             try:
-                timestamp = int(img.split("_")[1].split(".")[0])
+                timestamp = int(float(img.split("_")[1].split(".")[0]))
                 image_data.append({
                     'filename': img,
                     'timestamp': timestamp,
@@ -186,9 +195,8 @@ class VideoMakerV2:
             except (IndexError, ValueError):
                 print(f"Warning: Skipping image with invalid filename format: {img}")
                 continue
-        
-        # Sort by timestamp
-        image_data.sort(key=lambda x: x['timestamp'])
+        # Trie par timestamp (title_card.jpg reste en premier car timestamp=0)
+        image_data[1:] = sorted(image_data[1:], key=lambda x: x['timestamp'])
         return image_data
     
     def apply_frame_effects(self, img: np.ndarray, time: float, width: int, height: int) -> np.ndarray:

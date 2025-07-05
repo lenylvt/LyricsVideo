@@ -1,11 +1,13 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 import threading
 import os
+import random
+import math
 
 from lyrics import LyricsFetcher
 
 class ImageMaker:
-    def __init__(self, lyrics : list[dict]):
+    def __init__(self, lyrics: list[dict]):
         self.lyrics = lyrics
         self.folder = "lyrics_images"
         
@@ -50,6 +52,74 @@ class ImageMaker:
         
         return background
 
+    def add_modern_effects(self, background):
+        """Ajoute des effets modernes à l'arrière-plan"""
+        # Légère saturation pour des couleurs plus vives
+        enhancer = ImageEnhance.Color(background)
+        background = enhancer.enhance(1.3)
+        
+        # Léger flou gaussien pour un effet doux
+        background = background.filter(ImageFilter.GaussianBlur(radius=1.5))
+        
+        # Overlay sombre pour améliorer la lisibilité
+        overlay = Image.new('RGBA', background.size, (0, 0, 0, 80))
+        background = background.convert('RGBA')
+        background = Image.alpha_composite(background, overlay)
+        
+        return background.convert('RGB')
+
+    def create_gradient_overlay(self, width, height, color1=(0, 0, 0, 120), color2=(0, 0, 0, 40)):
+        """Crée un overlay avec dégradé"""
+        gradient = Image.new('RGBA', (width, height), color1)
+        draw = ImageDraw.Draw(gradient)
+        
+        # Dégradé vertical
+        for y in range(height):
+            alpha = int(color1[3] - (color1[3] - color2[3]) * (y / height))
+            color = (*color1[:3], alpha)
+            draw.line([(0, y), (width, y)], fill=color)
+        
+        return gradient
+
+    def get_smart_font_size(self, text, max_width, max_height):
+        """Calcule intelligemment la taille de police optimale"""
+        words = text.split()
+        base_size = int(0.08 * self.target_width)  # Taille de base plus grande
+        
+        # Ajuste selon la longueur du texte
+        if len(words) <= 3:
+            return base_size + 20  # Texte court = plus grand
+        elif len(words) <= 6:
+            return base_size + 10
+        elif len(words) <= 10:
+            return base_size
+        else:
+            return base_size - 10  # Texte long = plus petit
+
+    def wrap_text_intelligent(self, text, font, max_width):
+        """Découpe le texte de manière intelligente"""
+        words = text.split()
+        lines = []
+        current_line = ""
+        
+        for word in words:
+            test_line = current_line + " " + word if current_line else word
+            bbox = font.getbbox(test_line)
+            
+            if bbox[2] <= max_width:
+                current_line = test_line
+            else:
+                if current_line:
+                    lines.append(current_line)
+                    current_line = word
+                else:
+                    lines.append(word)
+        
+        if current_line:
+            lines.append(current_line)
+        
+        return lines
+
     def make_image(self, line):
         timestamp = line["timestamp"]
         # Vérifier si la ligne est vide ou ne contient que des espaces
@@ -63,49 +133,61 @@ class ImageMaker:
         # Resize background to 9:16 aspect ratio
         background = self.resize_background_to_916(background)
         
+        # Appliquer des effets modernes
+        background = self.add_modern_effects(background)
+        
         width, height = background.size
 
-        # Adjust font size for 9:16 aspect ratio (smaller relative to width)
-        font = ImageFont.truetype("../font.ttf", int(0.07 * width))  # 7% of width
+        # Taille de police intelligente
+        font_size = self.get_smart_font_size(line_text, width, height)
+        font = ImageFont.truetype("../font.ttf", font_size)
 
+        # Marges adaptatives
+        margin = int(0.1 * width)
+        max_text_width = width - margin * 2
+        
+        # Découpage intelligent du texte
+        lines = self.wrap_text_intelligent(line_text, font, max_text_width)
+        wrapped_text = "\n".join(lines)
+
+        # Créer une image temporaire pour calculer les dimensions du texte
+        temp_img = Image.new('RGB', (width, height))
+        temp_draw = ImageDraw.Draw(temp_img)
+        text_bbox = temp_draw.textbbox((0, 0), wrapped_text, font=font)
+        
+        # Position du texte (centré)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+        text_x = (width - text_width) // 2
+        text_y = (height - text_height) // 2
+        
         draw = ImageDraw.Draw(background)
-
-        # Adjust margins for vertical format
-        margin = int(0.08 * width)  # 8% of width as margin
-        wrapped_line = ""
-
-        for word in line_text.split():
-            if font.getbbox(wrapped_line.split("\n")[-1] + word)[2] > width - margin * 2:
-                wrapped_line += "\n"
-            wrapped_line += word + " "
-
-        wrapped_line = wrapped_line.strip()
-        rows = wrapped_line.split("\n")
-
-        centered_rows = []
-
-        for row in rows:
-            row = row.center(max([len(r) for r in rows]))
-            centered_rows.append(row)
         
-        wrapped_line = "\n".join(centered_rows)
-
-        _, _, w, h = draw.textbbox((0, 0), wrapped_line, font=font)
+        # Effet de texte multicouche pour plus de profondeur
+        # Ombre portée
+        shadow_offset = 4
+        draw.text((text_x + shadow_offset, text_y + shadow_offset), wrapped_text, 
+                 font=font, fill=(0, 0, 0, 100))
         
-        # Position text in the center of the 9:16 frame
-        text_x = (width - w) / 2
-        text_y = (height - h) / 2
-        
-        # Add text outline for better visibility
-        outline_width = 3
+        # Contour pour la lisibilité
+        outline_width = 2
         for adj in range(-outline_width, outline_width + 1):
             for adj2 in range(-outline_width, outline_width + 1):
-                draw.text((text_x + adj, text_y + adj2), wrapped_line, font=font, fill=(0, 0, 0))
+                if adj != 0 or adj2 != 0:
+                    draw.text((text_x + adj, text_y + adj2), wrapped_text, 
+                             font=font, fill=(0, 0, 0, 180))
         
-        # Draw main text
-        draw.text((text_x, text_y), wrapped_line, font=font, fill=(255, 255, 255))
-
-        background.save(f"{self.folder}/lyrics_{timestamp}.jpg")
+        # Texte principal avec léger gradient
+        draw.text((text_x, text_y), wrapped_text, font=font, fill=(255, 255, 255))
+        
+        # Créer un dégradé overlay subtil
+        gradient = self.create_gradient_overlay(width, height, (0, 0, 0, 30), (0, 0, 0, 10))
+        background = background.convert('RGBA')
+        background = Image.alpha_composite(background, gradient)
+        
+        # Sauvegarder l'image finale
+        background = background.convert('RGB')
+        background.save(f"{self.folder}/lyrics_{timestamp}.jpg", quality=95, optimize=True)
 
     def make_images(self):
         threads = []
@@ -117,3 +199,45 @@ class ImageMaker:
 
         for thread in threads:
             thread.join()
+
+    def create_title_card(self, artist, title, duration=3.0):
+        """Crée une carte de titre moderne pour le début de la vidéo"""
+        background = Image.open("../background.jpg")
+        background = self.resize_background_to_916(background)
+        background = self.add_modern_effects(background)
+        
+        width, height = background.size
+        
+        # Fonts pour le titre et l'artiste
+        title_font = ImageFont.truetype("../font.ttf", int(0.12 * width))
+        artist_font = ImageFont.truetype("../font.ttf", int(0.08 * width))
+        
+        # Créer l'overlay
+        background = background.convert('RGBA')
+        overlay = Image.new('RGBA', (width, height), (0, 0, 0, 120))
+        background = Image.alpha_composite(background, overlay)
+        
+        draw = ImageDraw.Draw(background)
+        
+        # Calculer positions
+        title_bbox = draw.textbbox((0, 0), title.upper(), font=title_font)
+        artist_bbox = draw.textbbox((0, 0), artist.upper(), font=artist_font)
+        
+        title_x = (width - (title_bbox[2] - title_bbox[0])) // 2
+        title_y = height // 2 - 100
+        
+        artist_x = (width - (artist_bbox[2] - artist_bbox[0])) // 2
+        artist_y = title_y + 120
+        
+        # Dessiner le titre
+        draw.text((title_x, title_y), title.upper(), font=title_font, fill=(255, 255, 255))
+        draw.text((artist_x, artist_y), artist.upper(), font=artist_font, fill=(200, 200, 200))
+        
+        # Ligne décorative
+        line_width = 200
+        line_x = (width - line_width) // 2
+        line_y = artist_y + 150
+        draw.rectangle([line_x, line_y, line_x + line_width, line_y + 3], fill=(255, 255, 255))
+        
+        background = background.convert('RGB')
+        background.save(f"{self.folder}/title_card.jpg", quality=95, optimize=True)
