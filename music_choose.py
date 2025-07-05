@@ -7,6 +7,10 @@ def choose_random_track(playlist_id=os.getenv("PLAYLIST_ID")):
     response = requests.get(url)
     data = response.json()
 
+    if not isinstance(data, dict) or 'tracks' not in data or 'data' not in data['tracks']:
+        print("❌ Erreur : la réponse Deezer ne contient pas de clé 'tracks'. Réponse brute :", data)
+        return None
+
     tracks = data['tracks']['data']
     if not tracks:
         print("Pas de musique dans la playlist... Ambiance Jean-Michel Silence.")
