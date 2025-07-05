@@ -3,11 +3,8 @@ moviepy
 opencv-python
 numpy
 Pillow
-selenium
-pytubefix
 librosa
 scipy
 matplotlib
 python-dotenv
-pytubefix
-librosa
+yt-dlp
