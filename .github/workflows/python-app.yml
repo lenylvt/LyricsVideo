@@ -37,5 +37,6 @@ jobs:
         TIKTOK_REDIRECT_URI: ${{ secrets.TIKTOK_REDIRECT_URI }}
         TIKTOK_TOKEN_JSON: ${{ secrets.TIKTOK_TOKEN_JSON }}
         PLAYLIST_ID: ${{ secrets.PLAYLIST_ID }}
+        COOKIES_TXT: ${{ secrets.COOKIES_TXT }}
       run: |
         python main.py 
