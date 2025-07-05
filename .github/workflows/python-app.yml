@@ -25,10 +25,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: 🎬 Installation de ffmpeg
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg
+    - name: 🛠️ Installation de yt-dlp et ffmpeg
+      uses: AnimMouse/setup-yt-dlp@v1
+      with:
+        with-ffmpeg: true
+
+    # (Optionnel) Vérification de la version yt-dlp
+    - name: 🔎 Vérification yt-dlp
+      run: yt-dlp --version
 
     - name: 📁 Vérification des assets essentiels
       run: |
