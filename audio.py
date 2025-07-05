@@ -4,6 +4,10 @@ import os
 from pytubefix import YouTube
 import librosa
 from urllib.parse import quote_plus
+from dotenv import load_dotenv
+
+# Charge les variables d'environnement depuis le fichier .env
+load_dotenv()
 
 class Scraper:
     def __init__(self, api_key=None):
@@ -119,38 +123,173 @@ class AudioFetcher:
                 Pour obtenir une clé : https://console.developers.google.com/
         """
         self.scraper = Scraper(youtube_api_key)
+        # Récupère le PO token et visitor data depuis les variables d'environnement
+        self.po_token = os.getenv('PO_TOKEN')
+        self.visitor_data = os.getenv('VISITOR_DATA')
+        if not self.po_token:
+            print("⚠️  PO_TOKEN non trouvé dans le fichier .env")
+        if not self.visitor_data:
+            print("⚠️  VISITOR_DATA non trouvé dans le fichier .env")
     
-    def fetch_audio(self, artist, title):
-        """Récupère l'audio depuis YouTube"""
+    def fetch_audio(self, artist, title, output_filename="audio.m4a"):
+        """Récupère l'audio depuis YouTube avec gestion améliorée des erreurs"""
         link = self.scraper.get_link(artist, title)
         print(f"Lien trouvé: {link}")
         
         if link:
+            # Méthode 1 : Essayer sans PO token (le plus simple et souvent suffisant)
             try:
+                print("🔄 Tentative sans PO token (méthode recommandée)...")
                 yt = YouTube(link)
+                
                 stream = yt.streams.filter(only_audio=True).first()
                 
                 if stream:
                     # Supprime l'ancien fichier s'il existe
-                    if os.path.exists("audio.m4a"):
-                        os.remove("audio.m4a")
+                    if os.path.exists(output_filename):
+                        os.remove(output_filename)
                     
-                    out_file = stream.download(filename="audio")
-                    base, ext = os.path.splitext(out_file)
-                    new_filename = "audio.m4a"
+                    # Télécharge avec le nom de fichier spécifié
+                    out_file = stream.download(filename=os.path.splitext(output_filename)[0])
                     
-                    # Renomme le fichier
-                    if os.path.exists(out_file):
-                        os.rename(out_file, new_filename)
-                        print(f"Audio téléchargé: {new_filename}")
+                    # Renomme le fichier si nécessaire
+                    if out_file != output_filename and os.path.exists(out_file):
+                        os.rename(out_file, output_filename)
+                        print(f"✅ Audio téléchargé: {output_filename}")
+                    elif os.path.exists(output_filename):
+                        print(f"✅ Audio téléchargé: {output_filename}")
                     else:
-                        print("Erreur: Le fichier téléchargé n'existe pas")
+                        print("❌ Erreur: Le fichier téléchargé n'existe pas")
+                        return False
+                    
+                    return True
                 else:
-                    print("Aucun stream audio trouvé")
+                    print("❌ Aucun stream audio trouvé")
+                    
             except Exception as e:
-                print(f"Erreur lors du téléchargement: {e}")
+                print(f"❌ Erreur avec méthode simple: {e}")
+            
+            # Méthode 2 : Essayer avec le client WEB
+            try:
+                print("🔄 Tentative avec le client WEB...")
+                yt = YouTube(link, client='WEB')
+                stream = yt.streams.filter(only_audio=True).first()
+                
+                if stream:
+                    if os.path.exists(output_filename):
+                        os.remove(output_filename)
+                    
+                    out_file = stream.download(filename=os.path.splitext(output_filename)[0])
+                    
+                    if out_file != output_filename and os.path.exists(out_file):
+                        os.rename(out_file, output_filename)
+                        print(f"✅ Audio téléchargé: {output_filename}")
+                    elif os.path.exists(output_filename):
+                        print(f"✅ Audio téléchargé: {output_filename}")
+                    else:
+                        print("❌ Erreur: Le fichier téléchargé n'existe pas")
+                        return False
+                    
+                    return True
+                else:
+                    print("❌ Aucun stream audio trouvé avec le client WEB")
+                    
+            except Exception as e2:
+                print(f"❌ Erreur avec client WEB: {e2}")
+            
+            # Méthode 3 : Essayer avec différents clients
+            for client_name in ['ANDROID', 'IOS', 'MWEB']:
+                try:
+                    print(f"🔄 Tentative avec le client {client_name}...")
+                    yt = YouTube(link, client=client_name)
+                    stream = yt.streams.filter(only_audio=True).first()
+                    
+                    if stream:
+                        if os.path.exists(output_filename):
+                            os.remove(output_filename)
+                        
+                        out_file = stream.download(filename=os.path.splitext(output_filename)[0])
+                        
+                        if out_file != output_filename and os.path.exists(out_file):
+                            os.rename(out_file, output_filename)
+                            print(f"✅ Audio téléchargé avec {client_name}: {output_filename}")
+                        elif os.path.exists(output_filename):
+                            print(f"✅ Audio téléchargé avec {client_name}: {output_filename}")
+                        else:
+                            print("❌ Erreur: Le fichier téléchargé n'existe pas")
+                            continue
+                        
+                        return True
+                    else:
+                        print(f"❌ Aucun stream audio trouvé avec {client_name}")
+                        
+                except Exception as e3:
+                    print(f"❌ Erreur avec client {client_name}: {e3}")
+                    continue
+            
+            # Méthode 4 : Utiliser le PO token seulement si TOUT est configuré ET les autres méthodes ont échoué
+            if self.po_token and self.visitor_data:
+                try:
+                    print("🔑 Dernière tentative avec PO token depuis .env...")
+                    # Définir les variables d'environnement pour pytubefix
+                    os.environ['PO_TOKEN'] = self.po_token
+                    os.environ['VISITOR_DATA'] = self.visitor_data
+                    
+                    # Utiliser une approche non-interactive pour le PO token
+                    import subprocess
+                    import sys
+                    
+                    # Créer un script temporaire pour éviter l'input interactif
+                    temp_script = f"""
+import os
+from pytubefix import YouTube
+
+os.environ['PO_TOKEN'] = '{self.po_token}'
+os.environ['VISITOR_DATA'] = '{self.visitor_data}'
+
+try:
+    yt = YouTube('{link}', use_po_token=True)
+    stream = yt.streams.filter(only_audio=True).first()
+    if stream:
+        stream.download(filename='{os.path.splitext(output_filename)[0]}')
+        print("SUCCESS")
+    else:
+        print("NO_STREAM")
+except Exception as e:
+    print(f"ERROR: {{e}}")
+"""
+                    
+                    # Sauvegarder et exécuter le script temporaire
+                    with open('temp_download.py', 'w') as f:
+                        f.write(temp_script)
+                    
+                    result = subprocess.run([sys.executable, 'temp_download.py'], 
+                                          capture_output=True, text=True, timeout=60)
+                    
+                    # Nettoyer le script temporaire
+                    if os.path.exists('temp_download.py'):
+                        os.remove('temp_download.py')
+                    
+                    if "SUCCESS" in result.stdout:
+                        # Renommer le fichier si nécessaire
+                        downloaded_files = [f for f in os.listdir('.') if f.startswith(os.path.splitext(output_filename)[0])]
+                        if downloaded_files:
+                            downloaded_file = downloaded_files[0]
+                            if downloaded_file != output_filename:
+                                os.rename(downloaded_file, output_filename)
+                            print(f"✅ Audio téléchargé avec PO token: {output_filename}")
+                            return True
+                    else:
+                        print(f"❌ Erreur avec PO token: {result.stdout}")
+                        
+                except Exception as e_po:
+                    print(f"❌ Erreur lors du téléchargement avec PO token: {e_po}")
+            
+            print("❌ Toutes les méthodes ont échoué")
+            return False
         else:
-            print("Aucun lien trouvé")
+            print("❌ Aucun lien trouvé")
+            return False
     
     def close(self):
         """Ferme le scraper"""
@@ -161,8 +300,13 @@ class AudioFetcher:
         Calcule le BPM à partir du fichier audio (par défaut audio.m4a) avec librosa.
         Retourne le BPM (float) ou None en cas d'erreur.
         """
+        if not os.path.exists(audio_path):
+            print(f"❌ Fichier audio non trouvé: {audio_path}")
+            return None
+            
         try:
             import librosa
+            print("🎵 Calcul du BPM en cours...")
             y, sr = librosa.load(audio_path, sr=None, mono=True, duration=60)  # max 60s pour rapidité
             tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
             return float(tempo)
@@ -176,16 +320,23 @@ if __name__ == "__main__":
     fetcher = AudioFetcher()
     
     # Option 2: Avec clé API YouTube (plus fiable)
-    # fetcher = AudioFetcher(youtube_api_key="VOTRE_CLE_API_ICI")
+    # Vous pouvez aussi mettre la clé API dans le .env avec YOUTUBE_API_KEY=votre_cle
+    # youtube_api_key = os.getenv('YOUTUBE_API_KEY')
+    # fetcher = AudioFetcher(youtube_api_key=youtube_api_key)
     
     try:
         # Récupère l'audio
-        fetcher.fetch_audio("Daft Punk", "Get Lucky")
+        success = fetcher.fetch_audio("Daft Punk", "Get Lucky")
         
-        # Calcule le BPM
-        # bpm = fetcher.get_bpm() # This line is removed as per the edit hint
-        # if bpm:
-        #     print(f"BPM: {bpm}")
+        if success:
+            # Calcule le BPM
+            bpm = fetcher.get_bpm_from_audio()
+            if bpm:
+                print(f"🎵 BPM: {bpm}")
+            else:
+                print("❌ Impossible de calculer le BPM")
+        else:
+            print("❌ Échec du téléchargement audio")
         
     finally:
         fetcher.close()
